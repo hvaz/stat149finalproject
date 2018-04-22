@@ -21,7 +21,6 @@ output:
 \newcommand{\mb}{\mathbf}
 \newcommand{\ansl}{\textcolor{blue}}
 
-#LIBRARIES
 ```{r, include=FALSE, cache=FALSE}
 library(car)
 library(MASS)
