@@ -5,7 +5,9 @@ date: "April 24, 2018"
 output: html_document
 ---
 
-Does not seem promising. Tried rpart() on data with NAs omitted, and on data with NAs converted to means (not sure what that really means here). Tried messing around with cp cuttoffs. Couldn't really get the evaluation metric below 0.89.
+Does not seem promising. Tried rpart() on data with NAs omitted, and on data with NAs converted to means (not sure what that really means here). For NA omission, I did not alter the NAs in the test set. I tried messing around with cp cuttoffs. Couldn't really get the evaluation metric below 0.89.
+
+I think this may be because there is a discrete number of probability levels generated. Since the evaluation metric scales with log of the probability estimates, it might be better to have something continuous. This is just a guess.
 
 split up data into train and test
 ```{r}
