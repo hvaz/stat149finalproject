@@ -1,0 +1,160 @@
+---
+title: "  model for Theoretical Limit"
+author: "Jonathan Gill"
+date: "April 24, 2018"
+output: html_document
+---
+
+Does not seem promising. Tried rpart() on data with NAs omitted, and on data with NAs converted to means (not sure what that really means here). Tried messing around with cp cuttoffs. Couldn't really get the evaluation metric below 0.89.
+
+split up data into train and test
+```{r}
+set.seed = 1
+samp = sample.int(n = nrow(train), size = 3000, replace = F)
+testsub = train[samp, ]
+trainsub = train[-samp,]
+```
+
+
+
+with NAs omitted:
+
+```{r}
+
+train = read.csv("train.csv")
+
+#Converting relevant variables to factors
+cols1 = c(2,3,4,5,6,8,11,12,14:45,48)
+train[cols1] = lapply(train[cols1], factor)
+
+#removing aliased columns
+train = train[,-which(names(train) %in% c("density_rural","single"))]
+
+
+#split dataset here if desired
+
+
+set.seed(1)
+require(rpart)
+tree = rpart(suppdem ~ . , data = trainsub, na.action = na.omit, method = "class", cp = 0.0015)
+plotcp(tree)
+pruned_tree = prune(tree, cp=0.0043)
+plotcp(pruned_tree)
+require(rpart.plot)
+prp(pruned_tree, extra=100)
+
+
+
+
+#testing
+predictions = predict(pruned_tree, testsub ,type = "prob")
+#just want the probability of "Yes"
+predictions = predictions[,1] 
+#change response from factor to binary
+test_binary = ifelse(testsub$suppdem=="Y", 1, 0)
+d = -(1/nrow(testsub))*sum((test_binary *log(predictions) + (1-test_binary )*log(1-predictions)))
+```
+
+
+
+With NAs converted:
+```{r}
+na.convert.mean = function (frame) 
+{
+    vars <- names(frame)
+    if (!is.null(resp <- attr(attr(frame, "terms"), "response"))) {
+        vars <- vars[-resp]
+        x <- frame[[resp]]
+        pos <- is.na(x)
+        if (any(pos)) {
+            frame <- frame[!pos, , drop = FALSE]
+            warning(paste(sum(pos), "observations omitted due to missing values in the response"))
+        }
+    }
+    for (j in vars) {  #j is variable names
+        x <- frame[[j]]
+        pos <- is.na(x)
+        if (any(pos)) {
+            if (length(levels(x))) {   # factors
+                xx <- as.character(x)
+                xx[pos] <- "NA"
+                x <- factor(xx, exclude = NULL)
+            }
+            else if (is.matrix(x)) {   # matrices
+                ats <- attributes(x)
+                x.na <- 1*pos
+#               x[pos] <- 0
+                w <- !pos
+                n <- nrow(x)
+                TT <- array(1, c(1, n))
+                xbar <- (TT %*% x)/(TT %*% w)
+                xbar <- t(TT) %*% xbar
+                x[pos] <- xbar[pos]
+                attributes(x) <- ats
+                attributes(x.na) <- ats
+                dimnames(x.na)[[2]]=paste(dimnames(x)[[2]],".na",sep='')
+                frame[[paste(j,".na",sep='')]] <- x.na 
+            } else {   # ordinary numerical vector
+                ats <- attributes(x)
+                x[pos] <- mean(x[!pos])
+#               x[pos] <- 0
+                x.na <- 1*pos
+                frame[[paste(j,".na",sep='')]] <- x.na 
+                attributes(x) <- ats
+            }
+            frame[[j]] <- x
+        }
+    }
+    frame
+}
+
+
+
+
+train = read.csv("train.csv")
+
+train_convert_na = na.convert.mean(train)
+
+#Converting relevant variables to factors
+cols1 = c(2,3,4,5,6,8,11,12,14:45,48)
+train_convert_na[cols1] = lapply(train_convert_na[cols1], factor)
+
+#removing aliased columns
+train_convert_na = train_convert_na[,-which(names(train_convert_na) %in% c("density_rural","single"))]
+
+
+
+#split dataset here if desired
+
+set.seed(1)
+require(rpart)
+tree = rpart(suppdem ~ . , data = trainsub, method = "class", cp = 0.0015)
+plotcp(tree)
+pruned_tree = prune(tree, cp=0.034)
+plotcp(pruned_tree)
+require(rpart.plot)
+prp(pruned_tree, extra=100)
+
+
+#testing
+predictions = predict(pruned_tree, testsub ,type = "prob")
+#just want the probability of "Yes"
+predictions = predictions[,1] 
+#change response from factor to binary
+test_binary = ifelse(testsub$suppdem=="Y", 1, 0)
+d = -(1/nrow(testsub))*sum((test_binary *log(predictions) + (1-test_binary )*log(1-predictions)))
+d
+```
+
+
+Testing
+```{r}
+
+predictions = predict(pruned_tree, testsub ,type = "prob")
+#just want the probability of "Yes"
+predictions = predictions[,1] 
+#change response from factor to binary
+test_binary = ifelse(testsub$suppdem=="Y", 1, 0)
+d = -(1/nrow(testsub))*sum((test_binary *log(predictions) + (1-test_binary )*log(1-predictions)))
+```
+
